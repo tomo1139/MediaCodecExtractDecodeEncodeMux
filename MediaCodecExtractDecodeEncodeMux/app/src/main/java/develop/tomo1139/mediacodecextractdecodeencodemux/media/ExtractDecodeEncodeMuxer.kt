@@ -64,12 +64,12 @@ class ExtractDecodeEncodeMuxer(inputFilePath: String, outputFilePath: String) {
         val inputVideoMime = inputVideoFormat.getString(MediaFormat.KEY_MIME)
         val width = inputVideoFormat.getInteger(MediaFormat.KEY_WIDTH)
         val height = inputVideoFormat.getInteger(MediaFormat.KEY_HEIGHT)
-        encodeVideoFormat = MediaFormat.createVideoFormat(inputVideoMime, width, height)
-        encodeVideoFormat?.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible) // TODO: チェック処理
-        encodeVideoFormat?.setInteger(MediaFormat.KEY_BIT_RATE, 2000000)
-        encodeVideoFormat?.setInteger(MediaFormat.KEY_FRAME_RATE, inputVideoFormat.getInteger(MediaFormat.KEY_FRAME_RATE))
-        encodeVideoFormat?.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 10)
-
+        encodeVideoFormat = MediaFormat.createVideoFormat(inputVideoMime, width, height).also {
+            it.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible)
+            it.setInteger(MediaFormat.KEY_BIT_RATE, 2000000)
+            it.setInteger(MediaFormat.KEY_FRAME_RATE, inputVideoFormat.getInteger(MediaFormat.KEY_FRAME_RATE))
+            it.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 10)
+        }
         Logger.e("encodeVideoFormat: $encodeVideoFormat")
 
         videoDecoder = MediaCodec.createDecoderByType(inputVideoMime)
