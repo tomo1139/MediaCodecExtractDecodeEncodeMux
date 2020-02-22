@@ -81,12 +81,9 @@ class ExtractDecodeEncodeMuxer(inputFilePath: String, outputFilePath: String) {
         val inputAudioMime = inputAudioFormat.getString(MediaFormat.KEY_MIME)
         val sampleRate = inputAudioFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE)
         val channelCount = inputAudioFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
-        encodeAudioFormat = MediaFormat().also {
-            it.setString(MediaFormat.KEY_MIME, inputAudioMime)
+        encodeAudioFormat = MediaFormat.createAudioFormat(inputAudioMime, sampleRate, channelCount).also {
             it.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
-            it.setInteger(MediaFormat.KEY_SAMPLE_RATE, sampleRate)
             it.setInteger(MediaFormat.KEY_BIT_RATE, inputAudioFormat.getInteger(MediaFormat.KEY_BIT_RATE))
-            it.setInteger(MediaFormat.KEY_CHANNEL_COUNT, channelCount)
         }
         Logger.e("encodeAudioFormat: $encodeAudioFormat")
 
