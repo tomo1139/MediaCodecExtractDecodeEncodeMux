@@ -119,16 +119,16 @@ class ExtractDecodeEncodeMuxer(inputFilePath: String, outputFilePath: String) {
                 isVideoEncodeEnd = encode(videoEncoder, {
                     outputVideoFormat = it
                     outputVideoTrackIdx = muxer.addTrack(it)
-                }, { encoderOutputBuffer, encoderOutputBufferInfo ->
-                    muxer.writeSampleData(outputVideoTrackIdx, encoderOutputBuffer, encoderOutputBufferInfo)
+                }, { outputBuffer, outputBufferInfo ->
+                    muxer.writeSampleData(outputVideoTrackIdx, outputBuffer, outputBufferInfo)
                 })
             }
             if (!isAudioEncodeEnd) {
                 isAudioEncodeEnd = encode(audioEncoder, {
                     outputAudioFormat = it
                     outputAudioTrackIdx = muxer.addTrack(it)
-                }, { encoderOutputBuffer, encoderOutputBufferInfo ->
-                    muxer.writeSampleData(outputAudioTrackIdx, encoderOutputBuffer, encoderOutputBufferInfo)
+                }, { outputBuffer, outputBufferInfo ->
+                    muxer.writeSampleData(outputAudioTrackIdx, outputBuffer, outputBufferInfo)
                 })
             }
         }
@@ -204,7 +204,7 @@ class ExtractDecodeEncodeMuxer(inputFilePath: String, outputFilePath: String) {
     private fun encode(
         encoder: MediaCodec,
         onOutputFormatChaned: (outputFormat: MediaFormat) -> Unit,
-        writeEncodedData: (encoderOutputBuffer: ByteBuffer, encoderOutputBufferInfo: MediaCodec.BufferInfo) -> Unit
+        writeEncodedData: (outputBuffer: ByteBuffer, outputBufferInfo: MediaCodec.BufferInfo) -> Unit
     ): Boolean {
         var isEncodeEnd = false
         val encoderOutputBufferInfo = MediaCodec.BufferInfo()
