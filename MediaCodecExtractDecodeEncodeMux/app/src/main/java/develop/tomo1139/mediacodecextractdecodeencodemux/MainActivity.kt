@@ -67,12 +67,16 @@ class MainActivity : AppCompatActivity() {
             Logger.e("input file path: $inputFilePath, outputFilePath: $outputFilePath")
 
             Thread {
+                ExtractDecodeEncodeMuxer(inputFilePath, outputFilePath).doExtractDecodeEncodeMux()
+                /*
                 try {
                     ExtractDecodeEncodeMuxer(inputFilePath, outputFilePath).doExtractDecodeEncodeMux()
                 } catch (e: Exception) {
                     Logger.e("e: $e")
                 }
+                */
                 runOnUiThread {
+                    Logger.e("Completed!! outputFilePath: $outputFilePath")
                     Toast.makeText(this, "Completed!!", Toast.LENGTH_LONG).show()
                 }
             }.start()

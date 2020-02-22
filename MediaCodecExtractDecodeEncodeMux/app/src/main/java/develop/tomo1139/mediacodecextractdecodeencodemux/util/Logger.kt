@@ -4,7 +4,7 @@ import android.util.Log
 
 
 object Logger {
-    fun e(arg1: Any) {
+    fun e(arg1: Any?) {
         val e = Throwable().stackTrace
         val classNames = e[1].className.split("\\.".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
         val className = classNames[classNames.size - 1]
