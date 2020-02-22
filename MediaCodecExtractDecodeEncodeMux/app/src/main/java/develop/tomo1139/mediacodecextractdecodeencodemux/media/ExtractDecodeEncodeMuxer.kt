@@ -113,10 +113,24 @@ class ExtractDecodeEncodeMuxer(inputFilePath: String, outputFilePath: String) {
         while (!isMuxEnd) {
             if (!isVideoExtractEnd) { isVideoExtractEnd = extract(videoExtractor, videoDecoder) }
             if (!isAudioExtractEnd) { isAudioExtractEnd = extract(audioExtractor, audioDecoder) }
-            if (!isVideoDecodeEnd) decodeVideo()
-            if (!isAudioDecodeEnd) decodeAudio()
-            if (!isVideoEncodeEnd) encodeVideo()
-            if (!isAudioEncodeEnd) encodeAudio()
+            if (!isVideoDecodeEnd) { isVideoDecodeEnd = decode(videoDecoder, videoEncoder) }
+            if (!isAudioDecodeEnd) { isAudioDecodeEnd = decode(audioDecoder, audioEncoder) }
+            if (!isVideoEncodeEnd) {
+                isVideoEncodeEnd = encode(videoEncoder, {
+                    outputVideoFormat = it
+                    outputVideoTrackIdx = muxer.addTrack(it)
+                }, { encoderOutputBuffer, encoderOutputBufferInfo ->
+                    muxer.writeSampleData(outputVideoTrackIdx, encoderOutputBuffer, encoderOutputBufferInfo)
+                })
+            }
+            if (!isAudioEncodeEnd) {
+                isAudioEncodeEnd = encode(audioEncoder, {
+                    outputAudioFormat = it
+                    outputAudioTrackIdx = muxer.addTrack(it)
+                }, { encoderOutputBuffer, encoderOutputBufferInfo ->
+                    muxer.writeSampleData(outputAudioTrackIdx, encoderOutputBuffer, encoderOutputBufferInfo)
+                })
+            }
         }
 
         videoExtractor.release()
@@ -154,151 +168,82 @@ class ExtractDecodeEncodeMuxer(inputFilePath: String, outputFilePath: String) {
         return isExtractEnd
     }
 
-    private fun decodeVideo() {
+    private fun decode(decoder: MediaCodec, encoder: MediaCodec): Boolean {
+        var isDecodeEnd = false
         val decoderOutputBufferInfo = MediaCodec.BufferInfo()
-        val decoderOutputBufferIdx = videoDecoder.dequeueOutputBuffer(decoderOutputBufferInfo, CODEC_TIMEOUT_IN_US)
+        val decoderOutputBufferIdx = decoder.dequeueOutputBuffer(decoderOutputBufferInfo, CODEC_TIMEOUT_IN_US)
 
         if (decoderOutputBufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
-            Logger.e("isVideoDecodeEnd = true")
-            isVideoDecodeEnd = true
+            Logger.e("isDecodeEnd = true")
+            isDecodeEnd = true
         }
         if (decoderOutputBufferIdx >= 0) {
-            val encoderInputBufferIdx = videoEncoder.dequeueInputBuffer(CODEC_TIMEOUT_IN_US)
+            val encoderInputBufferIdx = encoder.dequeueInputBuffer(CODEC_TIMEOUT_IN_US)
             if (encoderInputBufferIdx >= 0) {
-                val decoderOutputBuffer = (videoDecoder.getOutputBuffer(decoderOutputBufferIdx) as ByteBuffer).duplicate()
+                val decoderOutputBuffer = (decoder.getOutputBuffer(decoderOutputBufferIdx) as ByteBuffer).duplicate()
                 decoderOutputBuffer.position(decoderOutputBufferInfo.offset)
                 decoderOutputBuffer.limit(decoderOutputBufferInfo.offset + decoderOutputBufferInfo.size)
 
-                val encoderInputBuffer = videoEncoder.getInputBuffer(encoderInputBufferIdx)
+                val encoderInputBuffer = encoder.getInputBuffer(encoderInputBufferIdx)
                 encoderInputBuffer?.position(0)
                 encoderInputBuffer?.put(decoderOutputBuffer)
 
-                val flags = if (isVideoDecodeEnd) MediaCodec.BUFFER_FLAG_END_OF_STREAM else decoderOutputBufferInfo.flags
+                val flags = if (isDecodeEnd) MediaCodec.BUFFER_FLAG_END_OF_STREAM else decoderOutputBufferInfo.flags
 
-                videoEncoder.queueInputBuffer(
+                encoder.queueInputBuffer(
                     encoderInputBufferIdx, 0,
                     decoderOutputBufferInfo.size,
                     decoderOutputBufferInfo.presentationTimeUs, flags
                 )
-                videoDecoder.releaseOutputBuffer(decoderOutputBufferIdx, false)
+                decoder.releaseOutputBuffer(decoderOutputBufferIdx, false)
             }
         }
+        return isDecodeEnd
     }
 
-    private fun decodeAudio() {
-        val decoderOutputBufferInfo = MediaCodec.BufferInfo()
-        val decoderOutputBufferIdx = audioDecoder.dequeueOutputBuffer(decoderOutputBufferInfo, CODEC_TIMEOUT_IN_US)
-
-        if (decoderOutputBufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
-            Logger.e("isAudioDecodeEnd = true")
-            isAudioDecodeEnd = true
-        }
-
-        if (decoderOutputBufferIdx >= 0) {
-            val encoderInputBufferIdx = audioEncoder.dequeueInputBuffer(CODEC_TIMEOUT_IN_US)
-            if (encoderInputBufferIdx >= 0) {
-                val decoderOutputBuffer = (audioDecoder.getOutputBuffer(decoderOutputBufferIdx) as ByteBuffer).duplicate()
-                decoderOutputBuffer.position(decoderOutputBufferInfo.offset)
-                decoderOutputBuffer.limit(decoderOutputBufferInfo.offset + decoderOutputBufferInfo.size)
-
-                val encoderInputBuffer = audioEncoder.getInputBuffer(encoderInputBufferIdx)
-                encoderInputBuffer?.position(0)
-                encoderInputBuffer?.put(decoderOutputBuffer)
-
-                val flags = if (isAudioDecodeEnd) MediaCodec.BUFFER_FLAG_END_OF_STREAM else decoderOutputBufferInfo.flags
-
-                audioEncoder.queueInputBuffer(
-                    encoderInputBufferIdx, 0,
-                    decoderOutputBufferInfo.size,
-                    decoderOutputBufferInfo.presentationTimeUs, flags
-                )
-                audioDecoder.releaseOutputBuffer(decoderOutputBufferIdx, false)
-            }
-        }
-    }
-
-    private fun encodeVideo() {
+    private fun encode(
+        encoder: MediaCodec,
+        onOutputFormatChaned: (outputFormat: MediaFormat) -> Unit,
+        writeEncodedData: (encoderOutputBuffer: ByteBuffer, encoderOutputBufferInfo: MediaCodec.BufferInfo) -> Unit
+    ): Boolean {
+        var isEncodeEnd = false
         val encoderOutputBufferInfo = MediaCodec.BufferInfo()
-        val encoderOutputBufferIdx = videoEncoder.dequeueOutputBuffer(encoderOutputBufferInfo, CODEC_TIMEOUT_IN_US)
+        val encoderOutputBufferIdx = encoder.dequeueOutputBuffer(encoderOutputBufferInfo, CODEC_TIMEOUT_IN_US)
 
         if (encoderOutputBufferIdx == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-            Logger.e("output format changed: ${videoEncoder.outputFormat}")
-            outputVideoFormat = videoEncoder.outputFormat
-            outputVideoFormat?.let {
-                outputVideoTrackIdx = muxer.addTrack(it)
-                if (outputVideoFormat != null && outputAudioFormat != null) {
-                    Logger.e("muxer start")
-                    muxer.start()
-                    return
-                }
+            Logger.e("output format changed: ${encoder.outputFormat}")
+            onOutputFormatChaned(encoder.outputFormat)
+            if (outputVideoFormat != null && outputAudioFormat != null) {
+                Logger.e("muxer start")
+                muxer.start()
             }
+            return isEncodeEnd
         }
 
         if (encoderOutputBufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0) {
-            videoEncoder.releaseOutputBuffer(encoderOutputBufferIdx, false)
-            return
+            encoder.releaseOutputBuffer(encoderOutputBufferIdx, false)
+            return isEncodeEnd
         }
 
-        outputVideoFormat?: return
-        outputAudioFormat?: return
+        outputVideoFormat?: return isEncodeEnd
+        outputAudioFormat?: return isEncodeEnd
 
         if (encoderOutputBufferIdx >= 0) {
-            val encoderOutputBuffer = videoEncoder.getOutputBuffer(encoderOutputBufferIdx)
+            val encoderOutputBuffer = encoder.getOutputBuffer(encoderOutputBufferIdx)
             if (encoderOutputBufferInfo.size > 0) {
                 encoderOutputBuffer?.let {
-                    muxer.writeSampleData(outputVideoTrackIdx, it, encoderOutputBufferInfo)
-                    videoEncoder.releaseOutputBuffer(encoderOutputBufferIdx, false)
+                    writeEncodedData(it, encoderOutputBufferInfo)
+                    encoder.releaseOutputBuffer(encoderOutputBufferIdx, false)
                 }
             }
-            Logger.e("presentationTimeUs: ${encoderOutputBufferInfo.presentationTimeUs}")
+            Logger.e("presentationTimeUs: ${encoderOutputBufferInfo.presentationTimeUs}, encoder: ${encoder.codecInfo.name}")
         }
 
         if (encoderOutputBufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
-            Logger.e("isVideoEncodeEnd = true")
-            isVideoEncodeEnd = true
+            Logger.e("isEncodeEnd = true")
+            isEncodeEnd = true
         }
-    }
-
-    private fun encodeAudio() {
-        val encoderOutputBufferInfo = MediaCodec.BufferInfo()
-        val encoderOutputBufferIdx = audioEncoder.dequeueOutputBuffer(encoderOutputBufferInfo, CODEC_TIMEOUT_IN_US)
-
-        if (encoderOutputBufferIdx == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-            Logger.e("output format changed: ${audioEncoder.outputFormat}")
-            outputAudioFormat = audioEncoder.outputFormat
-            outputAudioFormat?.let {
-                outputAudioTrackIdx = muxer.addTrack(it)
-                if (outputVideoFormat != null && outputAudioFormat != null) {
-                    Logger.e("muxer start")
-                    muxer.start()
-                    return
-                }
-            }
-        }
-
-        if (encoderOutputBufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0) {
-            audioEncoder.releaseOutputBuffer(encoderOutputBufferIdx, false)
-            return
-        }
-
-        outputVideoFormat?: return
-        outputAudioFormat?: return
-
-        if (encoderOutputBufferIdx >= 0) {
-            val encoderOutputBuffer = audioEncoder.getOutputBuffer(encoderOutputBufferIdx)
-            if (encoderOutputBufferInfo.size > 0) {
-                encoderOutputBuffer?.let {
-                    muxer.writeSampleData(outputAudioTrackIdx, it, encoderOutputBufferInfo)
-                    audioEncoder.releaseOutputBuffer(encoderOutputBufferIdx, false)
-                }
-            }
-            Logger.e("presentationTimeUs: ${encoderOutputBufferInfo.presentationTimeUs}")
-        }
-
-        if (encoderOutputBufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
-            Logger.e("isAudioEncodeEnd = true")
-            isAudioEncodeEnd = true
-        }
+        return isEncodeEnd
     }
 
     private fun getAudioTrackIdx(extractor: MediaExtractor): Int {
