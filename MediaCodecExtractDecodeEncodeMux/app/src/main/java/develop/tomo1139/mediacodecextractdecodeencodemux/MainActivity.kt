@@ -12,8 +12,10 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.databinding.DataBindingUtil
 import develop.tomo1139.mediacodecextractdecodeencodemux.databinding.ActivityMainBinding
+import develop.tomo1139.mediacodecextractdecodeencodemux.media.ExtractDecodeEncodeMuxer
 import develop.tomo1139.mediacodecextractdecodeencodemux.util.FilePickerUtil
 import develop.tomo1139.mediacodecextractdecodeencodemux.util.Logger
+import java.lang.Exception
 
 class MainActivity : AppCompatActivity() {
     private val binding: ActivityMainBinding by lazy {
@@ -60,10 +62,16 @@ class MainActivity : AppCompatActivity() {
         if (requestCode == REQUEST_CODE_FILE_SELECT) {
             data?.data ?: return
 
-            val path = FilePickerUtil.getPath(this, data.data)
-            Logger.e("input file path: " + path)
+            val inputFilePath = FilePickerUtil.getPath(this, data.data) ?: return
+            val outputFilePath = getExternalFilesDir(null)?.absolutePath + "/output.mp4"
+            Logger.e("input file path: $inputFilePath, outputFilePath: $outputFilePath")
 
             Thread {
+                try {
+                    ExtractDecodeEncodeMuxer(inputFilePath, outputFilePath).doExtractDecodeEncodeMux()
+                } catch (e: Exception) {
+                    Logger.e("e: $e")
+                }
                 runOnUiThread {
                     Toast.makeText(this, "Completed!!", Toast.LENGTH_LONG).show()
                 }
