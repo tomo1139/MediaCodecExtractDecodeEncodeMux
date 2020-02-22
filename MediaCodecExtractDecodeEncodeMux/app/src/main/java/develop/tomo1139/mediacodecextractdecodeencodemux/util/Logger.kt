@@ -1,4 +1,4 @@
-package develop.tomo1139.mediacodecextractdecodeencodemux
+package develop.tomo1139.mediacodecextractdecodeencodemux.util
 
 import android.util.Log
 

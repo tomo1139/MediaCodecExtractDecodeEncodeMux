@@ -1,4 +1,4 @@
-package develop.tomo1139.mediacodecextractdecodeencodemux
+package develop.tomo1139.mediacodecextractdecodeencodemux.util
 
 import android.app.Activity
 import android.content.ActivityNotFoundException
@@ -32,7 +32,12 @@ object FilePickerUtil {
 
     fun getPath(context: Context, uri: Uri): String? {
         if ("content".equals(uri.scheme, ignoreCase = true)) {
-            return getDataColumn(context, uri, null, null)
+            return getDataColumn(
+                context,
+                uri,
+                null,
+                null
+            )
         }
         return null
     }
