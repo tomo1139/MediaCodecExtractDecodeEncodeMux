@@ -15,7 +15,6 @@ import develop.tomo1139.mediacodecextractdecodeencodemux.databinding.ActivityMai
 import develop.tomo1139.mediacodecextractdecodeencodemux.media.ExtractDecodeEncodeMuxer
 import develop.tomo1139.mediacodecextractdecodeencodemux.util.FilePickerUtil
 import develop.tomo1139.mediacodecextractdecodeencodemux.util.Logger
-import java.lang.Exception
 
 class MainActivity : AppCompatActivity() {
     private val binding: ActivityMainBinding by lazy {
