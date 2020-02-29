@@ -3,6 +3,7 @@ package develop.tomo1139.mediacodecextractdecodeencodemux.media
 import android.media.*
 import develop.tomo1139.mediacodecextractdecodeencodemux.util.Logger
 import java.nio.ByteBuffer
+import kotlin.math.ceil
 
 
 class ExtractDecodeEncodeMuxer(inputFilePath: String, outputFilePath: String) {
@@ -63,7 +64,7 @@ class ExtractDecodeEncodeMuxer(inputFilePath: String, outputFilePath: String) {
 
         val inputVideoMime = inputVideoFormat.getString(MediaFormat.KEY_MIME)
         val width = inputVideoFormat.getInteger(MediaFormat.KEY_WIDTH)
-        val height = inputVideoFormat.getInteger(MediaFormat.KEY_HEIGHT)
+        val height = (ceil(inputVideoFormat.getInteger(MediaFormat.KEY_HEIGHT) / 16f) * 16).toInt()
         encodeVideoFormat = MediaFormat.createVideoFormat(inputVideoMime, width, height).also {
             it.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible)
             it.setInteger(MediaFormat.KEY_BIT_RATE, 2000000)
