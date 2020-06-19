@@ -228,7 +228,7 @@ class ExtractDecodeEncodeMuxer(inputFilePath: String, outputFilePath: String) {
 
         if (encoderOutputBufferIdx >= 0) {
             val encoderOutputBuffer = encoder.getOutputBuffer(encoderOutputBufferIdx)
-            if (encoderOutputBufferInfo.size > 0) {
+            if (encoderOutputBufferInfo.size >= 0) {
                 encoderOutputBuffer?.let {
                     writeEncodedData(it, encoderOutputBufferInfo)
                     encoder.releaseOutputBuffer(encoderOutputBufferIdx, false)
